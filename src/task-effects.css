@@ -1,0 +1,24 @@
+.task-row {
+  position: relative;
+  overflow: hidden;
+}
+
+.task-row > button,
+.task-row > .task-accent,
+.task-row > .task-info {
+  position: relative;
+  z-index: 1;
+}
+
+.task-complete-sweep {
+  position: absolute;
+  z-index: 0;
+  inset: 0 auto 0 0;
+  width: 100%;
+  background: #c7f36b;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  filter: blur(14px);
+  pointer-events: none;
+}

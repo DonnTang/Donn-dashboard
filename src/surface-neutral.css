@@ -1,0 +1,48 @@
+/* Keep the dashboard surfaces calm: lime is reserved for active states. */
+.result-list::before {
+  background: #293230;
+}
+
+.result-item,
+.result-item:nth-child(1),
+.result-item:nth-child(2),
+.result-item:nth-child(3) {
+  border: 1px solid #2b3433;
+  border-top: 1px solid #2b3433;
+  border-left: 1px solid #2b3433;
+  background: #14191a;
+}
+
+.result-item::before {
+  border-color: #2b3433;
+  background: #14191a;
+}
+
+.result-item:hover {
+  border-color: #53634d;
+  background: #171e1c;
+}
+
+.result-item .result-icon {
+  background: #1c2422 !important;
+  color: #c7f36b !important;
+}
+
+.docs-panel .doc-row,
+.docs-panel .doc-row:nth-child(1),
+.docs-panel .doc-row:nth-child(2),
+.docs-panel .doc-row:nth-child(3) {
+  border: 1px solid #2b3433;
+  border-top: 1px solid #2b3433;
+  background: #14191a;
+}
+
+.docs-panel .doc-row:hover {
+  border-color: #53634d;
+  background: #171e1c;
+}
+
+.docs-panel .doc-icon {
+  background: #1c2422 !important;
+  color: #c7f36b !important;
+}

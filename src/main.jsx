@@ -4,10 +4,15 @@ import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import {
   ArrowUpRight, BarChart3, Bell, BookOpen, Bot, Check, CheckCircle2, ChevronRight,
-  Circle, Clock3, Edit3, Eye, FileText, FolderKanban, FolderUp, ImagePlus, LayoutDashboard, Menu, MessageSquare,
+  Circle, Clock3, Edit3, Eye, FileText, FolderKanban, FolderOpen, FolderUp, ImagePlus, LayoutDashboard, Menu, MessageSquare,
   MoreHorizontal, Plus, Save, Search, Send, Settings2, Sparkles, StickyNote, Target, Trash2, X, Zap
 } from 'lucide-react'
 import './styles.css'
+import './task-effects.css'
+import './dashboard-cards.css'
+import './dashboard-capture.css'
+import './result-chat.css'
+import './surface-neutral.css'
 import { db, exportDatabase, importDatabase, seedDatabase } from './db'
 
 gsap.registerPlugin(useGSAP)
@@ -27,9 +32,9 @@ const initialTasks = [
 ]
 
 const docs = [
-  { title: 'AI 工作台 · 产品决策记录', type: '决策记录', date: '刚刚更新', color: 'lime' },
-  { title: 'Q3 用户访谈 · 主题聚类', type: '研究笔记', date: '昨天', color: 'blue' },
-  { title: '增长实验室 · 会议纪要', type: '会议纪要', date: '8 月 31 日', color: 'coral' },
+  { folder: 'AI 工作台', title: '产品决策记录', type: '决策记录', count: 8, date: '刚刚更新', color: 'lime' },
+  { folder: 'Q3 用户访谈', title: '主题聚类', type: '研究笔记', count: 12, date: '昨天', color: 'blue' },
+  { folder: '增长实验室', title: '会议纪要', type: '会议纪要', count: 6, date: '8 月 31 日', color: 'coral' },
 ]
 
 const conversations = [
@@ -129,6 +134,13 @@ function AIWorkspace({ prompt, setPrompt, sent, sendPrompt }) {
   </div>
 }
 
+function QuickNoteCapture({ noteText, setNoteText, noteImage, noteError, onImageChange, onSave, clearImage, isSavingNote, onOpenNotes }) {
+  return <section className="quick-capture">
+    <div className="quick-capture-head"><div><span className="eyebrow"><StickyNote size={13} /> 瞬记</span><h3>把刚想到的记下来</h3></div><button className="subtle-btn" type="button" onClick={onOpenNotes}>查看全部 <ArrowUpRight size={14} /></button></div>
+    <form onSubmit={onSave}><textarea value={noteText} onChange={(event) => setNoteText(event.target.value)} placeholder="此刻你在想什么？" aria-label="瞬记内容" rows="3" />{noteImage && <div className="image-preview"><img src={noteImage.dataUrl} alt="待保存的图片" /><div><strong>{noteImage.name}</strong><small>随这条瞬记一起保存</small></div><button type="button" className="icon-btn small" onClick={clearImage} aria-label="移除图片"><X size={16} /></button></div>}{noteError && <p className="note-error">{noteError}</p>}<div className="note-composer-actions"><label className="attachment-btn" htmlFor="dashboard-note-image"><ImagePlus size={16} /> 添加图片</label><input id="dashboard-note-image" type="file" accept="image/*" onChange={onImageChange} /><span>文字或一张图片</span><button className="primary-btn" type="submit" disabled={isSavingNote}>{isSavingNote ? '保存中...' : <><Send size={16} /> 记录下来</>}</button></div></form>
+  </section>
+}
+
 function QuickNotes({ notes, noteText, setNoteText, noteImage, noteError, onImageChange, onSave, clearImage, isSavingNote }) {
   return <div className="quick-notes">
     <section className="quick-notes-head"><div><p className="date-line">瞬记 <span className="live-dot" /> 自动保存到本地</p><h1>不让任何一个想法溜走。</h1><p className="lede">灵感、问题、截图和零散判断，先记下来。整理和归类，留给之后的自己。</p></div><div className="note-count"><strong>{notes.length}</strong><span>条已记录</span></div></section>
@@ -158,6 +170,10 @@ function KnowledgeBase({ documents, importStatus, onImport, onExportBackup, onRe
   </div>
 }
 
+function AIAssistantPanel({ prompt, setPrompt, sent, sendPrompt }) {
+  return <section className="ai-panel dashboard-ai-panel"><div className="ai-panel-top"><div><span className="eyebrow"><Bot size={13} /> AI 助手</span><h3>把想法变成下一步</h3></div><span className="status-pill"><i /> 在线</span></div><p>从你的工作台上下文开始提问，AI 会引用相关任务和文档。</p><form className="prompt-box" onSubmit={sendPrompt}><input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="问问你的工作台..." aria-label="问问你的工作台" /><button aria-label="发送" type="submit"><Send size={16} /></button></form>{sent && <div className="sent-toast"><Check size={13} /> 已加入 AI 对话</div>}<div className="prompt-suggestions"><button type="button" onClick={() => setPrompt('总结我今天最重要的三件事')}>总结今天 <ArrowUpRight size={13} /></button><button type="button" onClick={() => setPrompt('哪些任务可以交给 AI？')}>找点灵感 <ArrowUpRight size={13} /></button></div></section>
+}
+
 function App() {
   const appRef = useRef(null)
   const [active, setActive] = useState('总览')
@@ -167,6 +183,8 @@ function App() {
   const [mobileNav, setMobileNav] = useState(false)
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const taskMeterRef = useRef(null)
+  const [completedTaskId, setCompletedTaskId] = useState(null)
   const [notes, setNotes] = useState([])
   const [noteText, setNoteText] = useState('')
   const [noteImage, setNoteImage] = useState(null)
@@ -189,6 +207,40 @@ function App() {
     })
     return () => mm.revert()
   }, { scope: appRef, dependencies: [active], revertOnUpdate: true })
+  useGSAP(() => {
+    const meter = taskMeterRef.current
+    if (!meter) return
+    const progress = tasks.length ? (tasks.filter((task) => task.done).length / tasks.length) * 100 : 0
+    const mm = gsap.matchMedia()
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.to(meter, { width: `${progress}%`, duration: 0.65, ease: 'power2.out', overwrite: true })
+    })
+    mm.add('(prefers-reduced-motion: reduce)', () => {
+      gsap.set(meter, { width: `${progress}%` })
+    })
+    return () => mm.revert()
+  }, { scope: appRef, dependencies: [tasks, active] })
+  useGSAP(() => {
+    if (completedTaskId == null) return
+    const row = appRef.current?.querySelector(`[data-task-id="${completedTaskId}"]`)
+    if (!row) return
+    const button = row.querySelector('.check-btn')
+    const sweep = row.querySelector('.task-complete-sweep')
+    const mm = gsap.matchMedia()
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      const animation = gsap.timeline({ defaults: { overwrite: true } })
+        .fromTo(button, { scale: 0.72, boxShadow: '0 0 0 0 rgba(199,243,107,0)' }, { scale: 1.14, boxShadow: '0 0 0 8px rgba(199,243,107,0.18)', duration: 0.22, ease: 'back.out(3)' })
+        .to(button, { scale: 1, boxShadow: '0 0 0 0 rgba(199,243,107,0)', duration: 0.42, ease: 'power2.out' })
+      if (sweep) animation.fromTo(sweep, { scaleX: 0, opacity: 0.16 }, { scaleX: 1, opacity: 0, duration: 0.7, ease: 'power2.out' }, 0)
+      return () => animation.kill()
+    })
+    mm.add('(prefers-reduced-motion: reduce)', () => {
+      gsap.set(button, { clearProps: 'all' })
+      if (sweep) gsap.set(sweep, { clearProps: 'all' })
+    })
+    const reset = window.setTimeout(() => setCompletedTaskId(null), 850)
+    return () => { window.clearTimeout(reset); mm.revert() }
+  }, { scope: appRef, dependencies: [completedTaskId] })
   useEffect(() => {
     seedDatabase(initialTasks).then(() => db.tasks.toArray()).then(setTasks).catch(() => setTasks(initialTasks))
     db.notes.orderBy('createdAt').reverse().toArray().then(setNotes).catch(() => setNotes([]))
@@ -200,6 +252,7 @@ function App() {
     if (task.id !== id) return task
     const next = { ...task, done: !task.done, updatedAt: Date.now() }
     db.tasks.put(next)
+    if (!task.done) setCompletedTaskId(id)
     return next
   }))
   const addTask = async (event) => {
@@ -353,13 +406,15 @@ function App() {
           <section className="insight-grid">
             <article className="insight-card hero-insight"><div className="card-top"><span className="eyebrow"><Sparkles size={13} /> 今日 AI 结论</span><span className="card-time">09:12 更新</span></div><div className="insight-copy"><h2>你的下一步，应该更靠近用户。</h2><p>过去 7 天的访谈与反馈里，“首次使用的理解成本”出现了 11 次。建议今天优先验证首屏引导，而不是继续扩展功能范围。</p></div><div className="insight-foot"><span><Target size={15} /> 基于 4 份知识文档</span><button className="text-btn">查看完整分析 <ArrowUpRight size={15} /></button></div></article>
             <article className="stat-card"><div className="stat-head"><span>AI 消耗</span><button className="icon-btn small"><MoreHorizontal size={16} /></button></div><div className="stat-value">34.2k <small>tokens</small></div><div className="stat-meta up"><ArrowUpRight size={14} /> 12.8% <span>较上周</span></div><div className="bars" aria-label="近七日 AI 消耗"><i style={{ height: '36%' }} /><i style={{ height: '54%' }} /><i style={{ height: '44%' }} /><i style={{ height: '70%' }} /><i style={{ height: '58%' }} /><i style={{ height: '82%' }} /><i className="today" style={{ height: '68%' }} /></div><div className="bars-label"><span>8/29</span><span>今天</span></div></article>
-            <article className="stat-card stat-tasks"><div className="stat-head"><span>今日待办</span><span className="count-badge">{openTasks} 项待处理</span></div><div className="stat-value">{tasks.filter((task) => task.done).length}<small> / {tasks.length}</small></div><div className="task-meter"><i style={{ width: `${(tasks.filter((task) => task.done).length / tasks.length) * 100}%` }} /></div><div className="stat-meta"><CheckCircle2 size={14} /> 完成进度 <span>{Math.round((tasks.filter((task) => task.done).length / tasks.length) * 100)}%</span></div></article>
+            <article className="stat-card stat-tasks"><div className="stat-head"><span>今日待办</span><span className="count-badge">{openTasks} 项待处理</span></div><div className="stat-value">{tasks.filter((task) => task.done).length}<small> / {tasks.length}</small></div><div className="task-meter"><i ref={taskMeterRef} /></div><div className="stat-meta"><CheckCircle2 size={14} /> 完成进度 <span>{Math.round((tasks.filter((task) => task.done).length / tasks.length) * 100)}%</span></div></article>
           </section>
 
-          <section className="section-grid"><div className="section-main"><div className="section-heading"><div><h3>今天要做什么</h3><p>把注意力放在真正推动事情前进的地方。</p></div><button className="subtle-btn">查看全部 <ArrowUpRight size={15} /></button></div><div className="task-list">{tasks.map((task) => <div className={`task-row ${task.done ? 'done' : ''}`} key={task.id}><button className="check-btn" onClick={() => toggleTask(task.id)} aria-label={task.done ? '标记未完成' : '标记完成'}>{task.done ? <Check size={14} /> : <Circle size={17} />}</button><div className={`task-accent ${task.color}`} /><div className="task-info"><strong>{task.title}</strong><div><span>{task.project}</span><span className="task-divider" /><Clock3 size={13} /> <span>{task.time}</span></div></div><button className="icon-btn small task-more" aria-label="更多操作"><MoreHorizontal size={16} /></button></div>)}</div>{isAddingTask ? <form className="add-task-form" onSubmit={addTask}><Plus size={16} /><input autoFocus value={newTaskTitle} onChange={(event) => setNewTaskTitle(event.target.value)} onKeyDown={(event) => event.key === 'Escape' && (setIsAddingTask(false), setNewTaskTitle(''))} placeholder="输入待办内容" aria-label="待办内容" /><button type="submit" className="icon-btn small" aria-label="保存待办"><Check size={16} /></button><button type="button" className="icon-btn small" onClick={() => { setIsAddingTask(false); setNewTaskTitle('') }} aria-label="取消添加"><X size={16} /></button></form> : <button className="add-task" onClick={() => setIsAddingTask(true)}><Plus size={16} /> 添加一个待办</button>}</div>
+          <section className="section-grid"><div className="section-main"><div className="section-heading"><div><h3>今天要做什么</h3><p>把注意力放在真正推动事情前进的地方。</p></div><button className="subtle-btn">查看全部 <ArrowUpRight size={15} /></button></div><div className="task-list">{tasks.map((task) => <div className={`task-row ${task.done ? 'done' : ''}`} data-task-id={task.id} key={task.id}><span className="task-complete-sweep" aria-hidden="true" /><button className="check-btn" onClick={() => toggleTask(task.id)} aria-label={task.done ? '标记未完成' : '标记完成'}>{task.done ? <Check size={14} /> : <Circle size={17} />}</button><div className={`task-accent ${task.color}`} /><div className="task-info"><strong>{task.title}</strong><div><span>{task.project}</span><span className="task-divider" /><Clock3 size={13} /> <span>{task.time}</span></div></div><button className="icon-btn small task-more" aria-label="更多操作"><MoreHorizontal size={16} /></button></div>)}</div>{isAddingTask ? <form className="add-task-form" onSubmit={addTask}><Plus size={16} /><input autoFocus value={newTaskTitle} onChange={(event) => setNewTaskTitle(event.target.value)} onKeyDown={(event) => event.key === 'Escape' && (setIsAddingTask(false), setNewTaskTitle(''))} placeholder="输入待办内容" aria-label="待办内容" /><button type="submit" className="icon-btn small" aria-label="保存待办"><Check size={16} /></button><button type="button" className="icon-btn small" onClick={() => { setIsAddingTask(false); setNewTaskTitle('') }} aria-label="取消添加"><X size={16} /></button></form> : <button className="add-task" onClick={() => setIsAddingTask(true)}><Plus size={16} /> 添加一个待办</button>}</div>
             <div className="section-side"><div className="section-heading compact"><div><h3>最近结果</h3><p>AI 帮你完成的工作</p></div><button className="icon-btn small"><MoreHorizontal size={16} /></button></div><div className="result-list"><div className="result-item"><div className="result-icon blue"><MessageSquare size={16} /></div><div><strong>竞品动态周报</strong><small>已生成 · 12 分钟前</small></div><ChevronRight size={15} className="muted" /></div><div className="result-item"><div className="result-icon lime"><FileText size={16} /></div><div><strong>访谈摘要 · 03</strong><small>已整理 · 昨天 18:40</small></div><ChevronRight size={15} className="muted" /></div><div className="result-item"><div className="result-icon coral"><Zap size={16} /></div><div><strong>落地页文案变体</strong><small>已生成 · 昨天 16:22</small></div><ChevronRight size={15} className="muted" /></div></div><button className="view-all-btn">进入结果库 <ArrowUpRight size={15} /></button></div></section>
 
-          <section className="bottom-grid"><div className="docs-panel"><div className="section-heading"><div><h3>知识文档</h3><p>你的工作记忆，持续被 AI 理解。</p></div><button className="subtle-btn">打开知识库 <ArrowUpRight size={15} /></button></div><div className="doc-list">{docs.map((doc) => <div className="doc-row" key={doc.title}><div className={`doc-icon ${doc.color}`}><BookOpen size={16} /></div><div className="doc-info"><strong>{doc.title}</strong><span>{doc.type}</span></div><time>{doc.date}</time><ChevronRight size={15} className="muted" /></div>)}</div></div><div className="ai-panel"><div className="ai-panel-top"><div><span className="eyebrow"><Bot size={13} /> AI 助手</span><h3>把想法变成下一步</h3></div><span className="status-pill"><i /> 在线</span></div><p>从你的工作台上下文开始提问，AI 会引用相关任务和文档。</p><form className="prompt-box" onSubmit={sendPrompt}><input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="问问你的工作台..." aria-label="问问你的工作台" /><button aria-label="发送" type="submit"><Send size={16} /></button></form>{sent && <div className="sent-toast"><Check size={13} /> 已加入 AI 对话</div>}<div className="prompt-suggestions"><button type="button" onClick={() => setPrompt('总结我今天最重要的三件事')}>总结今天 <ArrowUpRight size={13} /></button><button type="button" onClick={() => setPrompt('哪些任务可以交给 AI？')}>找点灵感 <ArrowUpRight size={13} /></button></div></div></section>
+          <section className="dashboard-upper-grid"><AIAssistantPanel prompt={prompt} setPrompt={setPrompt} sent={sent} sendPrompt={sendPrompt} /><QuickNoteCapture noteText={noteText} setNoteText={setNoteText} noteImage={noteImage} noteError={noteError} onImageChange={selectNoteImage} onSave={saveNote} clearImage={() => setNoteImage(null)} isSavingNote={isSavingNote} onOpenNotes={() => setActive('瞬记')} /></section>
+
+          <section className="bottom-grid"><div className="docs-panel"><div className="section-heading"><div><h3>知识文档</h3><p>你的工作记忆，持续被 AI 理解。</p></div><button className="subtle-btn">打开知识库 <ArrowUpRight size={15} /></button></div><div className="doc-list">{docs.map((doc) => <div className="doc-row" key={doc.title}><div className={`doc-icon ${doc.color}`}><FolderOpen size={19} /></div><div className="doc-info"><strong>{doc.folder}</strong><span>{doc.count} 篇文档 · 最近：{doc.title}</span></div><time>{doc.date}</time><ChevronRight size={15} className="muted" /></div>)}</div></div></section>
             </>}
         </div>
       </main>

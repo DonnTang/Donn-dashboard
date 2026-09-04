@@ -1,0 +1,132 @@
+/* Dashboard content cards keep the existing data/actions, but add visual grouping. */
+.result-list {
+  display: grid;
+  gap: 9px;
+  border-top: 0;
+}
+
+.result-item {
+  position: relative;
+  align-items: flex-start;
+  min-height: 116px;
+  padding: 15px;
+  gap: 11px;
+  border: 1px solid #263034;
+  border-radius: 10px;
+  background: #111719;
+  transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.result-item:hover {
+  transform: translateY(-2px);
+  border-color: #44514d;
+  background: #151d1f;
+}
+
+.result-item:nth-child(1) { border-top: 2px solid #5fd4ff; }
+.result-item:nth-child(2) { border-top: 2px solid #c7f36b; }
+.result-item:nth-child(3) { border-top: 2px solid #ff8066; }
+
+.result-item > div:nth-child(2) {
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.result-item .result-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+}
+
+.result-item strong {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.result-item small {
+  margin-top: 7px;
+  font-size: 12px;
+}
+
+.result-item > .muted {
+  position: absolute;
+  top: 16px;
+  right: 14px;
+}
+
+.docs-panel .doc-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  border-top: 0;
+}
+
+.bottom-grid .docs-panel {
+  grid-column: 1 / -1;
+}
+
+.docs-panel .doc-row {
+  position: relative;
+  display: block;
+  min-height: 156px;
+  padding: 16px;
+  border: 1px solid #263034;
+  border-radius: 10px;
+  background: #13191b;
+  transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.docs-panel .doc-row:hover {
+  transform: translateY(-2px);
+  border-color: #44514d;
+  background: #171f20;
+}
+
+.docs-panel .doc-row:nth-child(1) { border-top: 2px solid #c7f36b; }
+.docs-panel .doc-row:nth-child(2) { border-top: 2px solid #5fd4ff; }
+.docs-panel .doc-row:nth-child(3) { border-top: 2px solid #ff8066; }
+
+.docs-panel .doc-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.docs-panel .doc-info {
+  margin-top: 18px;
+  padding-right: 4px;
+}
+
+.docs-panel .doc-info strong {
+  overflow: visible;
+  white-space: normal;
+  line-height: 1.4;
+  font-size: 14px;
+}
+
+.docs-panel .doc-info span {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.docs-panel .doc-row time {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  font-size: 11px;
+}
+
+.docs-panel .doc-row > .muted {
+  position: absolute;
+  top: 19px;
+  right: 15px;
+}
+
+@media (max-width: 980px) {
+  .docs-panel .doc-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .docs-panel .doc-list { grid-template-columns: 1fr; }
+  .docs-panel .doc-row { min-height: 132px; }
+}
